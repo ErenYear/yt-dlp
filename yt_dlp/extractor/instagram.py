@@ -735,3 +735,36 @@ class InstagramStoryIE(InstagramBaseIE):
                     **filter_dict(highlight_data),
                 })
         return self.playlist_result(info_data, playlist_id=story_id, playlist_title=story_title)
+
+class InstagramFeedPostIE(InstagramBaseIE):
+    _VALID_URL = r'https?://(?:www\.)?instagram\.com/p/(?P<id>[^/?#&]+)/?'
+    IE_NAME = 'instagram:post'
+
+    def _real_extract(self, url):
+        post_id = self._match_id(url)
+        webpage = self._download_webpage(url, post_id)
+        data = self._parse_json(self._search_regex(
+            r'window\._sharedData\s*=\s*({.+?});</script>',
+            webpage, 'shared data'), post_id)
+
+        media = data['entry_data']['PostPage'][0]['graphql']['shortcode_media']
+        formats = self._extract_formats(media)
+        return {
+            'id': post_id,
+            'title': media.get('title') or 'Instagram Post',
+            'uploader': media['owner']['username'],
+            'uploader_id': media['owner']['id'],
+            'formats': formats,
+        }
+
+    def _extract_formats(self, media):
+        # Extract URLs for images/videos in the post
+        if media['__typename'] == 'GraphImage':
+            return [{'url': media['display_url'], 'ext': 'jpg'}]
+        elif media['__typename'] == 'GraphVideo':
+            return [{'url': media['video_url'], 'ext': 'mp4'}]
+        elif media['__typename'] == 'GraphSidecar':
+            return [{'url': node['display_url'], 'ext': 'jpg'}
+                    for node in media['edge_sidecar_to_children']['edges']]
+        return []
+        
