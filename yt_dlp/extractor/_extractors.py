@@ -874,6 +874,7 @@ from .instagram import (
     InstagramStoryIE,
     InstagramTagIE,
     InstagramUserIE,
+    InstagramFeedPostIE,
 )
 from .internazionale import InternazionaleIE
 from .internetvideoarchive import InternetVideoArchiveIE
