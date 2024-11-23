@@ -31,18 +31,34 @@ class PinterestBaseIE(InfoExtractor):
         video_id = data['id']
         thumbnails = []
         images = data.get('images')
+        jpg_formats = []
+        
         if isinstance(images, dict):
-            for thumbnail in images.values():
+            for key, thumbnail in images.items():
                 if not isinstance(thumbnail, dict):
                     continue
                 thumbnail_url = url_or_none(thumbnail.get('url'))
                 if not thumbnail_url:
                     continue
-                thumbnails.append({
-                    'url': thumbnail_url,
-                    'width': int_or_none(thumbnail.get('width')),
-                    'height': int_or_none(thumbnail.get('height')),
-                })
+
+                # Skip poster images
+                if key.lower() == 'poster':
+                    continue
+
+                ext = determine_ext(thumbnail_url)
+                if ext in {'jpg', 'jpeg'}:
+                    jpg_formats.append({
+                        'url': thumbnail_url,
+                        'format_id': f'image-{key}',
+                        'width': int_or_none(thumbnail.get('width')),
+                        'height': int_or_none(thumbnail.get('height')),
+                    })
+                else:
+                    thumbnails.append({
+                        'url': thumbnail_url,
+                        'width': int_or_none(thumbnail.get('width')),
+                        'height': int_or_none(thumbnail.get('height')),
+                    })
 
         info = {
             'title': strip_or_none(traverse_obj(data, 'title', 'grid_title', default='')),
@@ -97,6 +113,9 @@ class PinterestBaseIE(InfoExtractor):
                         'duration': duration,
                     })
 
+        # Merge video formats and jpg_formats
+        formats.extend(jpg_formats)
+
         return {
             'id': video_id,
             'formats': formats,
@@ -106,7 +125,7 @@ class PinterestBaseIE(InfoExtractor):
             'extractor': PinterestIE.IE_NAME,
             **info,
         }
-
+        
 
 class PinterestIE(PinterestBaseIE):
     _VALID_URL = rf'{PinterestBaseIE._VALID_URL_BASE}/pin/(?:[\w-]+--)?(?P<id>\d+)'
